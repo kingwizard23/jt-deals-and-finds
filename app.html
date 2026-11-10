@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Snap to Shelf</title>
+<meta name="theme-color" content="#0f5c63">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Snap to Shelf">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: phone-first one-hand app — sticky header, three tabs (Snap / Shelf / Export), bottom-thumb capture button */
+:root{
+  --bg:#eef1f3; --surface:#ffffff; --ink:#14232b; --muted:#5b6b73; --line:#d5dde1;
+  --tag:#f2c230; --tag-ink:#2a2100; --teal:#0f5c63; --teal-soft:#d7ebec;
+  --ok:#2c7a43; --warn:#a86a00; --bad:#b3362c;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f171b; --surface:#172228; --ink:#e6eef1; --muted:#93a4ab; --line:#2a3a42;
+  --tag:#e8b923; --tag-ink:#231b00; --teal:#5fc0c7; --teal-soft:#16363a;
+  --ok:#5fbf7c; --warn:#e3a33a; --bad:#ef7a6f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f171b; --surface:#172228; --ink:#e6eef1; --muted:#93a4ab; --line:#2a3a42;
+  --tag:#e8b923; --tag-ink:#231b00; --teal:#5fc0c7; --teal-soft:#16363a;
+  --ok:#5fbf7c; --warn:#e3a33a; --bad:#ef7a6f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:980px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;display:flex;flex-direction:column;gap:10px}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:900 26px/1 var(--f-display);letter-spacing:-.01em;margin:0;text-transform:uppercase}
+h1 span{background:var(--tag);color:var(--tag-ink);padding:0 6px;border-radius:4px}
+.stat{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+nav{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px;gap:4px}
+nav button{font:700 13px var(--f-display);letter-spacing:.06em;text-transform:uppercase;border:0;background:transparent;color:var(--muted);padding:10px 0;border-radius:7px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+section{display:flex;flex-direction:column;gap:16px;padding-top:8px}
+h2{font:700 18px/1.2 var(--f-display);margin:0;text-wrap:balance}
+.label{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.note{color:var(--muted);font-size:13px;margin:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.steps div{display:flex;gap:10px;align-items:flex-start}
+.steps b{font:900 15px var(--f-display);background:var(--teal-soft);color:var(--teal);border-radius:50%;min-width:28px;height:28px;display:grid;place-items:center}
+.steps p{margin:0;font-size:14px}
+/* capture */
+.fab{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);display:flex;gap:10px;justify-content:center}
+.btn{font:700 15px var(--f-display);letter-spacing:.04em;text-transform:uppercase;border:0;border-radius:999px;padding:14px 22px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn-primary{background:var(--tag);color:var(--tag-ink);box-shadow:0 4px 14px rgb(0 0 0 / .18);flex:1;max-width:420px;font-size:17px;padding:17px 22px}
+.btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn-small{font-size:12px;padding:9px 14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.queue{display:flex;flex-direction:column;gap:10px}
+.qrow{display:grid;grid-template-columns:64px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;align-items:center}
+.qrow img{width:64px;height:64px;object-fit:cover;border-radius:6px;background:var(--line)}
+.qrow .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.qrow .s{font:500 12px var(--f-mono);color:var(--muted)}
+.qrow.err .s{color:var(--bad)} .qrow.done .s{color:var(--ok)}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:30%;background:var(--teal);animation:slide 1.2s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+@media (prefers-reduced-motion:reduce){.bar i{animation:none;width:100%}}
+/* shelf */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.search{flex:1;min-width:0;font:inherit;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chip{flex:none;font:600 13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:var(--bg)}
+.chip small{font:500 11px var(--f-mono);opacity:.75;margin-left:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;text-align:left;padding:0;color:inherit;font:inherit;position:relative}
+.card .ph{aspect-ratio:1;max-width:100%;background:var(--line);position:relative}
+.card .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.pricetag{position:absolute;top:10px;right:-4px;background:var(--tag);color:var(--tag-ink);font:900 15px var(--f-display);padding:4px 10px 4px 14px;clip-path:polygon(10px 0,100% 0,100% 100%,10px 100%,0 50%);font-variant-numeric:tabular-nums}
+.card .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.card .ti{font-weight:600;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .fn{font:500 11px var(--f-mono);color:var(--muted);overflow-wrap:anywhere}
+.pill{align-self:flex-start;font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.st-Draft{color:var(--muted)} .st-Listed{color:var(--teal)} .st-Sold{color:var(--ok)}
+.example{opacity:.8}
+.example .exflag{position:absolute;top:10px;left:10px;background:var(--ink);color:var(--bg);font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.empty{display:flex;flex-direction:column;gap:12px}
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet img{width:100%;max-height:300px;object-fit:contain;background:var(--surface);border-radius:var(--r)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field input,.field select,.field textarea{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
+.field textarea{min-height:90px;resize:vertical}
+.range{font:500 12px var(--f-mono);color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.confirm{background:var(--surface);border:1px solid var(--bad);border-radius:8px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn-bad{background:var(--bad);color:#fff}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;font-weight:600;font-size:14px;max-width:90%}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font:500 13px var(--f-mono);overflow-wrap:anywhere}
+.warnbox{border-left:3px solid var(--warn);padding:8px 12px;background:var(--surface);border-radius:0 8px 8px 0;font-size:13px}
+
+/* standalone additions */
+nav{grid-template-columns:repeat(4,1fr)}
+nav button{font-size:12px;letter-spacing:.04em}
+header{padding-top:calc(14px + env(safe-area-inset-top,0px))}
+.keyrow{display:flex;gap:8px}
+.keyrow input{flex:1;min-width:0}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.setupbanner{border:2px solid var(--tag);background:var(--surface);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
+.setupbanner p{margin:0}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--teal)}
+ol.how{margin:0;padding-left:20px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+</style>
+<style>
+.check{display:flex;gap:10px;align-items:center;font-size:14px}
+.check input{width:20px;height:20px;accent-color:var(--teal)}
+.who{font-size:14px}
+.st-Hidden{color:var(--bad)}
+.refresh{background:none;border:0;color:var(--teal);font:600 13px var(--f-body);cursor:pointer;padding:4px 0}
+</style>
+<script src="config.js"></script>
+<script src="sb.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Snap to <span>Shelf</span></h1>
+      <div class="stat" id="stat">— items · $— est.</div>
+    </div>
+    <nav role="tablist">
+      <button role="tab" aria-selected="true" data-tab="snap">Snap</button>
+      <button role="tab" aria-selected="false" data-tab="shelf">Shelf</button>
+      <button role="tab" aria-selected="false" data-tab="export">Export</button>
+      <button role="tab" aria-selected="false" data-tab="setup">Setup</button>
+    </nav>
+  </header>
+
+  <!-- SNAP -->
+  <section id="v-snap">
+    <div class="setupbanner" id="needSetup" hidden>
+      <p id="needSetupText"></p>
+      <button class="btn btn-ghost btn-small" style="align-self:flex-start" id="goSetup">Go to Setup</button>
+    </div>
+    <div class="panel">
+      <h2>Take a picture. The rest is automatic.</h2>
+      <div class="steps">
+        <div><b>1</b><p>Tap <strong>Take photos</strong>. One item per picture, as many in a row as you want.</p></div>
+        <div><b>2</b><p>Each photo is identified, priced, categorized and renamed while you keep shooting.</p></div>
+        <div><b>3</b><p>Everything lands on the Shelf and your storefront, ready to list.</p></div>
+      </div>
+      <p class="note">Tip: fill the frame, show any brand label or model number, plain background if you can.</p>
+    </div>
+    <div>
+      <div class="row"><span class="label">This session</span><span class="stat" id="qstat"></span></div>
+      <div class="queue" id="queue"><p class="note">No photos yet this session.</p></div>
+    </div>
+  </section>
+
+  <!-- SHELF -->
+  <section id="v-shelf" hidden>
+    <div class="toolbar">
+      <input class="search" id="q" type="search" placeholder="Search titles, brands, SKUs">
+      <select class="search" id="statusFilter" style="flex:none;width:auto">
+        <option value="">All status</option><option>Draft</option><option>Listed</option><option>Sold</option><option value="hidden">Hidden</option>
+      </select>
+    </div>
+    <div class="row"><div class="chips" id="chips" style="flex:1;min-width:0"></div><button class="refresh" id="refreshBtn">Refresh</button></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- EXPORT -->
+  <section id="v-export" hidden>
+    <div class="panel">
+      <h2>Storefront</h2>
+      <p class="note">Your public page. Every item that isn't hidden shows up there automatically.</p>
+      <div class="row"><span class="stat" id="sfstat"></span><a class="btn btn-ghost btn-small" id="openStore" href="./" target="_blank" rel="noopener">Open storefront</a></div>
+    </div>
+    <div class="panel">
+      <h2>eBay draft file</h2>
+      <p class="note">A CSV in eBay's bulk-upload layout for every Draft item. Upload it in Seller Hub → Reports → Uploads. Photo links are filled in from your storefront.</p>
+      <div class="warnbox">Check before you list: category numbers and prices are AI estimates from the photo, not sold-listing data. Compare against eBay sold listings for anything over $50.</div>
+      <div class="row"><span class="stat" id="exstat"></span><button class="btn btn-ghost btn-small" id="exEbay">Save eBay CSV</button></div>
+    </div>
+    <div class="panel">
+      <h2>Renamed photos</h2>
+      <p class="note">Every photo in one .zip, named by what's in it and sorted into a folder per category.</p>
+      <div class="row"><span class="stat" id="phstat"></span><button class="btn btn-ghost btn-small" id="exPhotos">Save photos .zip</button></div>
+    </div>
+    <div class="panel">
+      <h2>Full inventory</h2>
+      <p class="note">Every item with its file name, category, price range and status. Opens in Excel or Google Sheets.</p>
+      <div class="row"><span></span><button class="btn btn-ghost btn-small" id="exAll">Save inventory CSV</button></div>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="v-setup" hidden>
+    <div class="panel" id="cfgMissing" hidden>
+      <h2>Connect your database</h2>
+      <p class="note">This copy of the app isn't connected to Supabase yet. Fill in <strong>config.js</strong> with your project URL and publishable key, then upload the site again.</p>
+    </div>
+    <div class="panel">
+      <h2>Team sign-in</h2>
+      <div id="signedOut">
+        <div class="fields">
+          <label class="field full"><span class="label">Email</span><input id="email" type="email" autocomplete="username" autocapitalize="off"></label>
+          <label class="field full"><span class="label">Password</span><input id="password" type="password" autocomplete="current-password"></label>
+        </div>
+        <div class="row" style="margin-top:10px"><span class="stat" id="authStat"></span><button class="btn btn-primary btn-small" style="flex:none" id="signInBtn">Sign in</button></div>
+        <p class="hint" style="margin-top:8px">Accounts are created by you in Supabase (Authentication → Users), one for you and one for your helper.</p>
+      </div>
+      <div id="signedIn" hidden>
+        <div class="row"><span class="who">Signed in as <strong id="whoEmail"></strong></span><button class="btn btn-ghost btn-small" id="signOutBtn">Sign out</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Claude API key</h2>
+      <ol class="how">
+        <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> and sign in (your Claude login works).</li>
+        <li>Add a few dollars of credit under Billing. This is separate from your Claude subscription.</li>
+        <li>Under API Keys, create a key, copy it, and paste it below.</li>
+      </ol>
+      <div class="keyrow">
+        <input class="search" id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-...">
+        <button class="btn btn-ghost btn-small" id="showKey">Show</button>
+      </div>
+      <div class="row"><span class="stat" id="keyStat"></span>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-small" id="testKey">Test</button><button class="btn btn-primary btn-small" style="flex:none" id="saveKey">Save key</button></div></div>
+      <p class="hint">The key stays on this phone only. Each phone that takes photos needs one (you can use the same key on both). Set a monthly spend limit under Limits in the Claude Console.</p>
+    </div>
+    <div class="panel">
+      <h2>Accuracy</h2>
+      <label class="field"><span class="label">Claude model</span>
+        <select class="search" id="model">
+          <option value="claude-sonnet-5-5">Best pricing: Sonnet (about 1¢ per photo)</option>
+          <option value="claude-haiku-5-5">Fastest &amp; cheapest: Haiku (a fraction of a cent)</option>
+          <option value="claude-opus-5-5">Expert: Opus (a few cents; antiques, art, rare items)</option>
+        </select></label>
+      <p class="hint">A wrong price costs more than the penny, so Sonnet is the default. Switch to Haiku for big batches of everyday stuff.</p>
+      <div class="row"><span></span><button class="btn btn-ghost btn-small" id="saveModel">Save</button></div>
+    </div>
+    <div class="panel">
+      <h2>Storefront details</h2>
+      <div class="fields">
+        <label class="field full"><span class="label">Store name</span><input id="sName" placeholder="JT Deals&amp;Finds"></label>
+        <label class="field full"><span class="label">Tagline</span><input id="sTag" placeholder="e.g. Estate sale treasures, priced fair"></label>
+        <label class="field full"><span class="label">Contact email (buyers email you here)</span><input id="sEmail" type="email" autocapitalize="off"></label>
+        <label class="field full check"><input type="checkbox" id="sSold"> Show sold items on the storefront (marked Sold)</label>
+      </div>
+      <div class="row"><span class="stat" id="sStat"></span><button class="btn btn-primary btn-small" style="flex:none" id="saveStore">Save</button></div>
+    </div>
+    <div class="panel">
+      <h2>Install on your phone</h2>
+      <ol class="how">
+        <li>iPhone: open this page in <strong>Safari</strong>, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</li>
+        <li>Android: open it in Chrome, tap ⋮, then <strong>Install app</strong>.</li>
+        <li>Open Snap to Shelf from its new icon, then sign in and add your key here. The installed app keeps its own storage, separate from the browser.</li>
+      </ol>
+    </div>
+  </section>
+</div>
+
+<div class="fab" id="fab">
+  <button class="btn btn-primary" id="shoot">📷&nbsp; Take photos</button>
+  <button class="btn btn-ghost" id="pick" aria-label="Choose from gallery">Gallery</button>
+</div>
+<input type="file" id="camInput" accept="image/*" capture="environment" hidden>
+<input type="file" id="galInput" accept="image/*" multiple hidden>
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script>
+const CATS = [
+  ["FUR","Furniture"],["HOM","Home & Kitchen"],["TOL","Tools & Hardware"],["ELE","Electronics"],
+  ["CLO","Clothing & Shoes"],["JWL","Jewelry & Watches"],["COL","Collectibles & Antiques"],["TOY","Toys & Games"],
+  ["BKM","Books & Media"],["SPT","Sports & Outdoors"],["AUT","Auto Parts"],["ART","Art & Decor"],
+  ["MUS","Musical Instruments"],["OTH","Other"]
+];
+const CAT_NAMES = CATS.map(c=>c[1]);
+const codeFor = n => (CATS.find(c=>c[1]===n)||CATS[CATS.length-1])[0];
+const CONDS = {"New":1000,"New other":1500,"Used - Like new":3000,"Used - Good":3000,"Used - Fair":3000,"For parts":7000};
+const DEFAULT_MODEL = "claude-sonnet-5-5";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => (n==null||n===""||isNaN(n)) ? "—" : "$" + Math.round(Number(n)).toLocaleString();
+const slug = s => String(s||"item").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40) || "item";
+
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ v==null||v==="" ? localStorage.removeItem(k) : localStorage.setItem(k,v) }catch(e){} }
+};
+const getKey = () => (store.get("sts-claude-key")||"").trim();
+const getModel = () => (store.get("sts-model")||"").trim() || DEFAULT_MODEL;
+const signedIn = () => !!SB.session;
+
+let items = [];
+let settings = {};
+let filterCat = "", tab = "snap";
+const queue = [];
+let running = 0;
+
+async function reload(quiet){
+  if(!SB.configured) { render(); return; }
+  try{
+    items = await SB.rest("GET","items?select=*&order=created_at.desc", undefined, null, !signedIn()) || [];
+  }catch(e){ if(!quiet) toast("Couldn't load inventory: "+e.message); }
+  render();
+}
+async function loadSettings(){
+  if(!SB.configured) return;
+  try{ settings = await SB.settings(); }catch(e){}
+  if(tab==="setup") renderSetup();
+}
+
+function toast(msg){ const h=$("#toastHost"); h.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>h.innerHTML="",3000); }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+function setTab(t){ tab=t;
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===t));
+  ["snap","shelf","export","setup"].forEach(v=>$("#v-"+v).hidden = v!==t);
+  store.set("sts-tab",t);
+  window.scrollTo(0,0);
+  render();
+}
+$("#goSetup").onclick=()=>setTab("setup");
+$("#refreshBtn").onclick=()=>{ reload(); toast("Refreshed"); };
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) reload(true); });
+
+/* ---------- capture ---------- */
+$("#shoot").onclick=()=>$("#camInput").click();
+$("#pick").onclick=()=>$("#galInput").click();
+$("#camInput").onchange=e=>{ addFiles(e.target.files); e.target.value=""; };
+$("#galInput").onchange=e=>{ addFiles(e.target.files); e.target.value=""; };
+
+function missingSetup(){
+  if(!SB.configured) return "This app isn't connected to your database yet (config.js).";
+  if(!signedIn()) return "Sign in under Setup so items save to your shared shelf and storefront.";
+  if(!getKey()) return "Add your Claude API key under Setup so the app can identify items.";
+  return "";
+}
+function addFiles(files){
+  if(!files || !files.length) return;
+  const m = missingSetup(); if(m){ toast(m); setTab("setup"); return; }
+  for(const f of files){
+    queue.unshift({id:crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random()), file:f, orig:f.name||"photo.jpg", thumb:URL.createObjectURL(f), state:"Waiting", title:"", err:""});
+  }
+  if(tab!=="snap") setTab("snap"); else renderQueue();
+  pump();
+}
+function pump(){ while(running<2){ const r=queue.slice().reverse().find(x=>x.state==="Waiting"); if(!r) break; running++; processRow(r).finally(()=>{running--; pump();}); } }
+
+async function shrink(file, max, q){
+  let bmp;
+  try{ bmp = await createImageBitmap(file, {imageOrientation:"from-image"}); }
+  catch(e){
+    bmp = await new Promise((res,rej)=>{ const im=new Image(); const u=URL.createObjectURL(file);
+      im.onload=()=>{ URL.revokeObjectURL(u); res(im); }; im.onerror=()=>rej(new Error("Couldn't read that photo.")); im.src=u; });
+  }
+  const k=Math.min(1, max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas"); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return await new Promise(res=>c.toBlob(res,"image/jpeg",q));
+}
+const blobToDataURL = b => new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(b); });
+
+const PROMPT = `You are an expert reseller and appraiser (estate sales, thrift, eBay). The photo shows ONE item for resale.
+Identify it as specifically as you can (brand, model, material, era, size if visible). Estimate a realistic USED resale price in USD based on typical eBay SOLD prices, not asking prices. If the item is common/low value, say so with a low price.
+Choose "category" from exactly this list: ${CAT_NAMES.join(" | ")}.
+Choose "condition" from exactly: ${Object.keys(CONDS).join(" | ")} (judge from the photo; default "Used - Good").
+Reply with ONLY one JSON object:
+{"title": "eBay-style listing title, max 80 chars, keywords first",
+ "shortName": "2-4 word plain name for a file name, e.g. oak dining chair",
+ "category": "...", "subcategory": "short", "brand": "or Unbranded",
+ "condition": "...", "description": "3-5 sentence listing description, honest about visible wear",
+ "priceLow": number, "priceHigh": number, "price": number,
+ "confidence": "high|medium|low", "keywords": ["5-8 search keywords"],
+ "ebayCategoryId": "best guess numeric eBay US leaf category id as string", "ebayCategoryName": "its name",
+ "notes": "one line: what would raise or lower the value, or what to check (e.g. look for maker's mark)"}`;
+
+class ApiError extends Error { constructor(msg, kind){ super(msg); this.kind=kind; } }
+
+async function askClaude(content, {json=true, maxTokens=1500}={}){
+  const key=getKey(), model=getModel();
+  if(!key) throw new ApiError("Add your Claude API key in Setup.","nokey");
+  let r;
+  try{
+    r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model, max_tokens:maxTokens, messages:[{role:"user", content}]})
+    });
+  }catch(e){ throw new ApiError("No connection. Check your signal and try again.","network"); }
+  let data=null; try{ data = await r.json(); }catch(e){}
+  if(!r.ok){
+    const m = (data && data.error && data.error.message) || ("HTTP "+r.status);
+    if(r.status===401) throw new ApiError("Claude rejected the key. Check it in Setup.","auth");
+    if(/credit balance/i.test(m)) throw new ApiError("Out of API credit. Add credit under Billing at console.anthropic.com.","quota");
+    if(r.status===429) throw new ApiError("Too many at once. Wait a minute, then try again.","rate");
+    if(r.status===529 || r.status>=500) throw new ApiError("Claude is busy right now. Try again in a moment.","busy");
+    if(r.status===404) throw new ApiError(`Model "${model}" isn't available. Pick another in Setup.`,"model");
+    throw new ApiError("Claude error: "+m,"other");
+  }
+  const text = (data && Array.isArray(data.content) ? data.content.filter(b=>b.type==="text").map(b=>b.text).join("") : "").trim();
+  if(!text) throw new ApiError("Empty answer. Try again.","empty");
+  if(!json) return text;
+  try{ return JSON.parse(text); }
+  catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch(_){} } throw new ApiError("Got an unreadable answer. Try again.","json"); }
+}
+
+async function processRow(row){
+  try{
+    row.state="Shrinking"; renderQueue();
+    const keep = await shrink(row.file, 1600, 0.85);
+    const small = await shrink(row.file, 1024, 0.8);
+    row.state="Identifying"; renderQueue();
+    const b64 = (await blobToDataURL(small)).split(",")[1];
+    const r = await askClaude([
+      {type:"image", source:{type:"base64", media_type:"image/jpeg", data:b64}},
+      {type:"text", text:PROMPT}
+    ]);
+    const cat = CAT_NAMES.includes(r.category) ? r.category : "Other";
+    const cond = CONDS[r.condition] ? r.condition : "Used - Good";
+    const tail = Date.now().toString(36).slice(-4).toUpperCase();
+    const sku = `${codeFor(cat)}-${tail}`;
+    const short = slug(r.shortName || r.title);
+    const num = (row.orig.match(/\d{3,}/g)||[]).pop();
+    const fileName = `${short}-${num ? num.slice(-4) : tail.toLowerCase()}.jpg`;
+    const id = sku+"-"+Math.random().toString(36).slice(2,6);
+    row.state="Uploading"; renderQueue();
+    const photoPath = `${id}/${fileName}`;
+    const photoUrl = await SB.upload(photoPath, keep);
+    const doc = {
+      id, sku, title:String(r.title||r.shortName||"Untitled item").slice(0,80), short_name:String(r.shortName||""),
+      file_name:fileName, original_name:row.orig, category:cat, subcategory:String(r.subcategory||""), brand:String(r.brand||""),
+      condition:cond, description:String(r.description||""), price_low:Number(r.priceLow)||null, price_high:Number(r.priceHigh)||null,
+      price:Number(r.price)||Number(r.priceLow)||0, confidence:String(r.confidence||""), keywords:Array.isArray(r.keywords)?r.keywords.slice(0,10).map(String):[],
+      ebay_category_id:String(r.ebayCategoryId||""), ebay_category_name:String(r.ebayCategoryName||""), notes:String(r.notes||""),
+      status:"Draft", hidden:false, photo_path:photoPath, photo_url:photoUrl, model:getModel()
+    };
+    try{ await SB.rest("POST","items",doc,"return=minimal"); }
+    catch(e){ SB.removePhoto(photoPath); throw e; }
+    row.state="Done"; row.title=`${doc.title} · ${money(doc.price)} · ${doc.file_name}`;
+    reload(true);
+  }catch(e){
+    row.state="Failed";
+    row.err = (e && e.message) || "Something went wrong. Try again.";
+    if(e && e.kind==="auth"){ queue.forEach(q=>{ if(q.state==="Waiting"){ q.state="Failed"; q.err=row.err; } }); }
+  }
+  renderQueue();
+}
+
+function renderQueue(){
+  const el=$("#queue");
+  if(!queue.length){ el.innerHTML='<p class="note">No photos yet this session.</p>'; $("#qstat").textContent=""; return; }
+  const done=queue.filter(r=>r.state==="Done").length, busy=queue.filter(r=>!["Done","Failed"].includes(r.state)).length;
+  $("#qstat").textContent = `${done} done${busy?` · ${busy} working`:""}`;
+  el.innerHTML = queue.map(r=>`<div class="qrow ${r.state==="Done"?"done":r.state==="Failed"?"err":""}">
+    <img src="${r.thumb}" alt="">
+    <div style="min-width:0"><div class="t">${esc(r.state==="Done"?r.title:r.orig)}</div>
+    <div class="s">${esc(r.state==="Failed"?r.err:r.state==="Done"?"Saved to Shelf & storefront":r.state+"…")}</div>
+    ${r.state==="Failed"?`<button class="btn btn-ghost btn-small" style="margin-top:6px" data-retry="${r.id}">Try again</button>`:""}
+    ${["Done","Failed","Waiting"].includes(r.state)?"":'<div class="bar"><i></i></div>'}</div></div>`).join("");
+  el.querySelectorAll("[data-retry]").forEach(b=>b.onclick=()=>{ const r=queue.find(x=>x.id===b.dataset.retry); if(r){ r.state="Waiting"; r.err=""; renderQueue(); pump(); } });
+}
+
+/* ---------- shelf ---------- */
+$("#q").oninput=()=>renderGrid();
+$("#statusFilter").onchange=()=>renderGrid();
+function visible(){
+  const q=$("#q").value.trim().toLowerCase(), st=$("#statusFilter").value;
+  return items.filter(i=>(!filterCat||i.category===filterCat)&&(!st||(st==="hidden"?i.hidden:i.status===st))&&
+    (!q||[i.title,i.brand,i.sku,i.file_name,i.subcategory].join(" ").toLowerCase().includes(q)));
+}
+function renderChips(){
+  const counts={}; items.forEach(i=>counts[i.category]=(counts[i.category]||0)+1);
+  const used = CAT_NAMES.filter(n=>counts[n]);
+  $("#chips").innerHTML = `<button class="chip" aria-pressed="${!filterCat}" data-c="">All<small>${items.length}</small></button>` +
+    used.map(n=>`<button class="chip" aria-pressed="${filterCat===n}" data-c="${esc(n)}">${esc(n)}<small>${counts[n]}</small></button>`).join("");
+  $("#chips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{filterCat=b.dataset.c; renderChips(); renderGrid();});
+}
+function cardHTML(i, ex){
+  return `<div class="ph">${i.photo_url?`<img src="${esc(i.photo_url)}" alt="" loading="lazy">`:""}<span class="pricetag">${money(i.price)}</span>${ex?'<span class="exflag">Example</span>':""}</div>
+  <div class="body"><span class="pill st-${esc(i.status)}">${esc(i.status)}</span>${i.hidden?'<span class="pill st-Hidden">Hidden</span>':""}<div class="ti">${esc(i.title)}</div>
+  <div class="fn">${esc(i.file_name)} · ${esc(i.sku)}</div></div>`;
+}
+function renderGrid(){
+  const g=$("#grid");
+  if(!items.length){
+    g.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <p class="note">${SB.configured && signedIn() ? "Your shelf is empty. Items show up here and on your storefront as soon as each photo is done." : "Sign in under Setup to see your shared shelf."} Here's what one looks like:</p>
+      <div class="grid"><div class="card example" aria-label="Example item">${cardHTML({price:45,status:"Draft",title:"Vintage Solid Oak Spindle Back Dining Chair Mid-Century",file_name:"oak-dining-chair-5777.jpg",sku:"FUR-8K2Q"},true)}</div></div></div>`;
+    return;
+  }
+  const v=visible();
+  g.innerHTML = v.length ? "" : '<p class="note" style="grid-column:1/-1">Nothing matches that filter.</p>';
+  v.forEach(i=>{ const b=document.createElement("button"); b.className="card"; b.innerHTML=cardHTML(i); b.onclick=()=>openSheet(i); g.appendChild(b); });
+}
+
+/* ---------- detail sheet ---------- */
+function openSheet(i){
+  const h=$("#sheetHost");
+  const canEdit = signedIn();
+  h.innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-label="Item details">
+    <div class="row"><span class="label">${esc(i.sku)} · ${esc(i.confidence||"?")} confidence</span><button class="btn btn-ghost btn-small" id="sClose">Close</button></div>
+    ${i.photo_url?`<img src="${esc(i.photo_url)}" alt="">`:""}
+    <div class="fields">
+      <label class="field full"><span class="label">Title</span><input id="fTitle" maxlength="80" value="${esc(i.title)}"></label>
+      <label class="field"><span class="label">Price</span><input id="fPrice" type="number" inputmode="decimal" value="${esc(i.price)}"></label>
+      <label class="field"><span class="label">Status</span><select id="fStatus">${["Draft","Listed","Sold"].map(s=>`<option ${s===i.status?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label class="field"><span class="label">Category</span><select id="fCat">${CAT_NAMES.map(c=>`<option ${c===i.category?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+      <label class="field"><span class="label">Condition</span><select id="fCond">${Object.keys(CONDS).map(c=>`<option ${c===i.condition?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+      <label class="field full"><span class="label">eBay listing link (shows a Buy on eBay button)</span><input id="fEbay" type="url" inputmode="url" autocapitalize="off" placeholder="https://www.ebay.com/itm/..." value="${esc(i.ebay_url||"")}"></label>
+      <label class="field full"><span class="label">File name</span><input id="fFile" value="${esc(i.file_name)}"></label>
+      <label class="field full"><span class="label">Description</span><textarea id="fDesc">${esc(i.description)}</textarea></label>
+      <label class="field full check"><input type="checkbox" id="fShow" ${i.hidden?"":"checked"}> Show on storefront</label>
+    </div>
+    <dl class="kv">
+      <dt>Est. range</dt><dd>${money(i.price_low)} – ${money(i.price_high)}</dd>
+      <dt>Brand</dt><dd>${esc(i.brand||"—")}</dd>
+      <dt>eBay category</dt><dd>${esc(i.ebay_category_name||"—")} ${i.ebay_category_id?"#"+esc(i.ebay_category_id):""}</dd>
+      <dt>Keywords</dt><dd>${esc((i.keywords||[]).join(", ")||"—")}</dd>
+      <dt>Original photo</dt><dd>${esc(i.original_name||"—")}</dd>
+    </dl>
+    ${i.notes?`<div class="warnbox">${esc(i.notes)}</div>`:""}
+    <div class="row">
+      <button class="btn btn-ghost btn-small" id="sDel" ${canEdit?"":"disabled"}>Delete</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-small" id="sCopy">Copy listing</button><button class="btn btn-ghost btn-small" id="sPhoto">Save photo</button><button class="btn btn-primary btn-small" style="flex:none" id="sSave" ${canEdit?"":"disabled"}>Save</button></div>
+    </div>
+    <div id="delBox"></div>
+  </div></div>`;
+  const close=()=>h.innerHTML="";
+  $("#sClose").onclick=close; $("#scrim").onclick=e=>{ if(e.target.id==="scrim") close(); };
+  $("#sSave").onclick=async()=>{
+    let fn=$("#fFile").value.trim()||i.file_name; if(!/\.jpe?g$/i.test(fn)) fn+=".jpg";
+    let eb=$("#fEbay").value.trim(); if(eb && !/^https?:\/\//i.test(eb)) eb="https://"+eb;
+    const patch={title:$("#fTitle").value.trim().slice(0,80), price:Number($("#fPrice").value)||0, status:$("#fStatus").value,
+      category:$("#fCat").value, condition:$("#fCond").value, file_name:fn, description:$("#fDesc").value,
+      ebay_url:eb||null, hidden:!$("#fShow").checked};
+    try{ await SB.rest("PATCH",`items?id=eq.${encodeURIComponent(i.id)}`,patch,"return=minimal"); toast("Saved"); close(); reload(true); }
+    catch(e){ toast("Couldn't save: "+e.message); }
+  };
+  $("#sCopy").onclick=async()=>{
+    const t=`${$("#fTitle").value}\n\n$${$("#fPrice").value}\nCondition: ${$("#fCond").value}\n\n${$("#fDesc").value}`;
+    try{ await navigator.clipboard.writeText(t); toast("Listing copied. Paste it into eBay or Marketplace."); }catch(e){ toast("Couldn't copy."); }
+  };
+  $("#sDel").onclick=()=>{ $("#delBox").innerHTML=`<div class="confirm"><span style="flex:1">Delete this item for good? It also comes off the storefront.</span><button class="btn btn-ghost btn-small" id="dNo">Keep</button><button class="btn btn-bad btn-small" id="dYes">Delete</button></div>`;
+    $("#dNo").onclick=()=>$("#delBox").innerHTML="";
+    $("#dYes").onclick=async()=>{ try{ await SB.rest("DELETE",`items?id=eq.${encodeURIComponent(i.id)}`,undefined,"return=minimal"); SB.removePhoto(i.photo_path); toast("Deleted"); close(); reload(true); }catch(e){ toast("Couldn't delete: "+e.message); } };
+  };
+  $("#sPhoto").onclick=async()=>{
+    try{ const b=await (await fetch(i.photo_url)).blob(); saveFile(i.file_name, b); }catch(e){ toast("Couldn't get the photo."); }
+  };
+}
+
+/* ---------- files out ---------- */
+async function saveFile(name, blob){
+  try{
+    const f = new File([blob], name, {type: blob.type || "application/octet-stream"});
+    if(navigator.canShare && navigator.canShare({files:[f]}) && /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints>0){
+      await navigator.share({files:[f]}); return;
+    }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+  const u=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u), 30000);
+  toast(`Saved ${name}`);
+}
+const csvCell = v => { const s=String(v??""); return /[",\n\r]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+const toCSV = rows => "﻿"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
+const today = () => new Date().toISOString().slice(0,10);
+
+$("#exEbay").onclick=()=>{
+  const d=items.filter(i=>i.status==="Draft");
+  if(!d.length){ toast("No Draft items to export."); return; }
+  const head=["*Action(SiteID=US|Country=US|Currency=USD|Version=1193)","CustomLabel","*Category","*Title","*ConditionID","C:Brand","*Description","*Format","*Duration","*StartPrice","*Quantity","PicURL"];
+  const rows=d.map(i=>["Draft",i.sku,i.ebay_category_id,i.title,CONDS[i.condition]||3000,i.brand||"Unbranded",i.description,"FixedPrice","GTC",Number(i.price||0).toFixed(2),1,i.photo_url||""]);
+  saveFile(`ebay-drafts-${today()}.csv`, new Blob([toCSV([head,...rows])],{type:"text/csv"}));
+};
+$("#exAll").onclick=()=>{
+  if(!items.length){ toast("Nothing to export yet."); return; }
+  const head=["SKU","File name","Original photo","Title","Category","Subcategory","Brand","Condition","Price","Low","High","Status","On storefront","eBay link","Confidence","eBay category","Description","Notes","Photo"];
+  const rows=items.map(i=>[i.sku,i.file_name,i.original_name,i.title,i.category,i.subcategory,i.brand,i.condition,i.price,i.price_low,i.price_high,i.status,i.hidden?"No":"Yes",i.ebay_url,i.confidence,i.ebay_category_id,i.description,i.notes,i.photo_url]);
+  saveFile(`inventory-${today()}.csv`, new Blob([toCSV([head,...rows])],{type:"text/csv"}));
+};
+$("#exPhotos").onclick=async()=>{
+  if(!items.length){ toast("No photos yet."); return; }
+  if(!window.JSZip){ toast("Zip tool didn't load. Connect to the internet and try again."); return; }
+  const btn=$("#exPhotos"); btn.disabled=true; btn.textContent="Zipping…";
+  try{
+    const zip=new JSZip(); const used=new Set();
+    for(const i of items){
+      if(!i.photo_url) continue;
+      let b; try{ b=await (await fetch(i.photo_url)).blob(); }catch(e){ continue; }
+      let p=`${slug(i.category)}/${i.file_name}`, n=2;
+      while(used.has(p)){ p=`${slug(i.category)}/${i.file_name.replace(/(\.jpe?g)?$/i,`-${n++}$1`)}`; }
+      used.add(p); zip.file(p,b);
+    }
+    saveFile(`photos-${today()}.zip`, await zip.generateAsync({type:"blob"}));
+  }catch(e){ toast("Couldn't build the zip."); }
+  btn.disabled=false; btn.textContent="Save photos .zip";
+};
+
+/* ---------- setup ---------- */
+function maskKey(k){ return k ? k.slice(0,7)+"…"+k.slice(-4) : ""; }
+function renderSetup(){
+  $("#cfgMissing").hidden = SB.configured;
+  $("#signedOut").hidden = signedIn(); $("#signedIn").hidden = !signedIn();
+  $("#whoEmail").textContent = (SB.session && SB.session.email) || "";
+  const k=getKey();
+  $("#keyStat").innerHTML = k ? `<span class="ok">Key saved (${esc(maskKey(k))})</span>` : `<span class="bad">No key yet</span>`;
+  $("#model").value = getModel();
+  const ae=document.activeElement;
+  if(ae!==$("#sName")) $("#sName").value = settings.store_name||"";
+  if(ae!==$("#sTag")) $("#sTag").value = settings.tagline||"";
+  if(ae!==$("#sEmail")) $("#sEmail").value = settings.contact_email||"";
+  $("#sSold").checked = settings.show_sold==="true";
+  ["sName","sTag","sEmail","sSold","saveStore"].forEach(id=>$("#"+id).disabled=!signedIn());
+  $("#sStat").textContent = signedIn() ? "" : "Sign in to edit";
+}
+$("#signInBtn").onclick=async()=>{
+  const em=$("#email").value.trim(), pw=$("#password").value;
+  if(!em||!pw){ $("#authStat").textContent="Enter email and password."; return; }
+  $("#authStat").textContent="Signing in…";
+  try{ await SB.signIn(em,pw); $("#password").value=""; $("#authStat").textContent=""; toast("Signed in"); await Promise.all([reload(),loadSettings()]); }
+  catch(e){ $("#authStat").innerHTML=`<span class="bad">${esc(/invalid/i.test(e.message)?"Wrong email or password.":e.message)}</span>`; }
+};
+$("#signOutBtn").onclick=()=>{ SB.signOut(); items=[]; toast("Signed out"); reload(true); };
+$("#showKey").onclick=()=>{ const f=$("#apiKey"); const show=f.type==="password"; f.type=show?"text":"password"; $("#showKey").textContent=show?"Hide":"Show"; if(show&&!f.value) f.value=getKey(); };
+$("#saveKey").onclick=()=>{ const v=$("#apiKey").value.trim(); if(!v){ toast("Paste your key first."); return; } store.set("sts-claude-key",v); $("#apiKey").value=""; $("#apiKey").type="password"; $("#showKey").textContent="Show"; toast("Key saved on this phone"); render(); };
+$("#saveModel").onclick=()=>{ store.set("sts-model",$("#model").value); toast("Saved"); render(); };
+$("#testKey").onclick=async()=>{
+  const typed=$("#apiKey").value.trim(); const prev=getKey();
+  if(typed) store.set("sts-claude-key",typed);
+  $("#keyStat").textContent="Testing…";
+  try{ await askClaude([{type:"text",text:'Reply with {"ok":true}'}],{maxTokens:50}); $("#keyStat").innerHTML=`<span class="ok">Key works</span>`; if(typed){ $("#apiKey").value=""; toast("Key works and is saved"); } }
+  catch(e){ if(typed) store.set("sts-claude-key",prev); $("#keyStat").innerHTML=`<span class="bad">${esc(e.message)}</span>`; }
+};
+$("#saveStore").onclick=async()=>{
+  const next={store_name:$("#sName").value.trim(), tagline:$("#sTag").value.trim(), contact_email:$("#sEmail").value.trim(), show_sold:String($("#sSold").checked)};
+  if(next.contact_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(next.contact_email)){ toast("That email doesn't look right."); return; }
+  try{ await SB.saveSettings(next); settings=Object.assign(settings,next); toast("Storefront updated"); }catch(e){ toast("Couldn't save: "+e.message); }
+};
+
+function render(){
+  const active=items.filter(i=>i.status!=="Sold");
+  $("#stat").textContent = `${items.length} item${items.length===1?"":"s"} · ${money(active.reduce((s,i)=>s+(Number(i.price)||0),0))} est.`;
+  $("#exstat").textContent = `${items.filter(i=>i.status==="Draft").length} Draft items ready`;
+  $("#phstat").textContent = `${items.filter(i=>i.photo_url).length} photos`;
+  $("#sfstat").textContent = `${items.filter(i=>!i.hidden && i.status!=="Sold").length} items showing`;
+  $("#fab").hidden = tab!=="snap";
+  const m = missingSetup(); $("#needSetup").hidden = !m; $("#needSetupText").innerHTML = m ? `<strong>Almost ready:</strong> ${esc(m)}` : "";
+  if(tab==="shelf"){ renderChips(); renderGrid(); }
+  if(tab==="snap") renderQueue();
+  if(tab==="setup") renderSetup();
+}
+
+/* ---------- boot ---------- */
+const savedTab = store.get("sts-tab");
+setTab(["snap","shelf","export","setup"].includes(savedTab) ? savedTab : (missingSetup() ? "setup" : "snap"));
+reload(true); loadSettings();
+if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>

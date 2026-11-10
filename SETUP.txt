@@ -1,0 +1,16 @@
+JT DEALS&FINDS storefront + SNAP TO SHELF app — one-time setup (about 15 minutes)
+
+1. Supabase (free): supabase.com → New project. Name it "snap-to-shelf".
+2. SQL Editor → New query → paste everything from setup.sql → Run.
+3. Authentication → Sign In / Providers → turn OFF "Allow new users to sign up".
+   Then Authentication → Users → Add user → Create new user (email + password),
+   once for you and once for your helper. Tick "Auto Confirm User".
+4. Project Settings → API Keys: copy the Project URL and the Publishable key.
+   Paste both into config.js (or send them to Claude to do it).
+5. Netlify → Add new site → Deploy manually → drop this whole folder.
+   Storefront:  https://YOUR-SITE.netlify.app/
+   App:         https://YOUR-SITE.netlify.app/app.html
+6. On each phone, open the App link → Share → Add to Home Screen (iPhone)
+   or ⋮ → Install app (Android). Open it from the icon, then in Setup:
+   sign in, paste your Claude API key, and fill in Storefront details.
+   The store name is already set to JT Deals&Finds; change it there any time.

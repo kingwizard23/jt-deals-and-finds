@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>JT Deals&amp;Finds</title>
+<meta name="description" content="JT Deals&amp;Finds: browse items for sale.">
+<meta property="og:title" content="JT Deals&amp;Finds">
+<meta property="og:site_name" content="JT Deals&amp;Finds">
+<meta property="og:description" content="Browse items for sale.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0f5c63">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Storefront: tag-yellow price tags on a calm teal shop front; photo-led grid, one-tap item sheet */
+:root{
+  --bg:#f4f1ea; --surface:#ffffff; --ink:#14232b; --muted:#5b6b73; --line:#e1dccf;
+  --tag:#f2c230; --tag-ink:#2a2100; --teal:#0f5c63; --teal-ink:#ffffff; --teal-soft:#d7ebec;
+  --sold:#b3362c;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:12px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10181c; --surface:#18242a; --ink:#e8eef0; --muted:#97a7ad; --line:#2a3a42;
+  --tag:#e8b923; --tag-ink:#231b00; --teal:#5fc0c7; --teal-ink:#0b1a1d; --teal-soft:#16363a; --sold:#ef7a6f; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+img{max-width:100%;display:block}
+[hidden]{display:none!important}
+a{color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+.hero{background:var(--teal);color:var(--teal-ink);padding:calc(28px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 28px max(16px,env(safe-area-inset-left,0px))}
+.hero .in{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:6px}
+.hero h1{font:900 clamp(28px,7vw,48px)/1 var(--f-display);letter-spacing:-.01em;margin:0;text-transform:uppercase;text-wrap:balance}
+.hero p{margin:0;opacity:.9;font-size:16px;max-width:60ch}
+.hero .count{font:500 12px var(--f-mono);opacity:.8;font-variant-numeric:tabular-nums;margin-top:4px}
+
+main{max-width:1100px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.bar{position:sticky;top:0;z-index:4;background:var(--bg);padding:10px 0 6px;display:flex;flex-direction:column;gap:10px}
+.tools{display:flex;gap:8px}
+.search{flex:1;min-width:0;font:inherit;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+select.search{flex:none;width:auto;max-width:42%}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chip{flex:none;font:600 13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip small{font:500 11px var(--f-mono);opacity:.7;margin-left:4px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+@media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;text-align:left;padding:0;color:inherit;font:inherit;position:relative;transition:transform .15s ease}
+.card:hover{transform:translateY(-2px)}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+.ph{aspect-ratio:1;background:var(--line);position:relative;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.pricetag{position:absolute;top:10px;right:-4px;background:var(--tag);color:var(--tag-ink);font:900 16px var(--f-display);padding:4px 10px 4px 14px;clip-path:polygon(10px 0,100% 0,100% 100%,10px 100%,0 50%);font-variant-numeric:tabular-nums}
+.soldflag{position:absolute;inset:auto 0 0 0;background:var(--sold);color:#fff;font:900 13px var(--f-display);letter-spacing:.12em;text-align:center;padding:5px 0;text-transform:uppercase}
+.card.sold .ph img{filter:grayscale(.7);opacity:.75}
+.body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ti{font-weight:600;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meta{font-size:12px;color:var(--muted)}
+
+.empty,.notice{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:28px 16px;text-align:center;color:var(--muted)}
+.skel .ph{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.skel .ph{animation:none}}
+
+/* item sheet */
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:760px){.scrim{align-items:center;padding:24px}}
+.sheet{background:var(--bg);width:100%;max-width:820px;max-height:94%;overflow:auto;border-radius:16px 16px 0 0;display:grid;grid-template-columns:1fr}
+@media (min-width:760px){.sheet{border-radius:16px;grid-template-columns:1.1fr 1fr}}
+.sheet .pic{background:var(--surface);display:flex;align-items:center;justify-content:center;min-height:240px}
+.sheet .pic img{width:100%;max-height:70vh;object-fit:contain}
+.sheet .info{padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet h2{font:700 22px/1.2 var(--f-display);margin:0;text-wrap:balance}
+.bigprice{font:900 30px var(--f-display);font-variant-numeric:tabular-nums}
+.facts{display:flex;flex-wrap:wrap;gap:6px}
+.fact{font:600 12px var(--f-body);padding:4px 10px;border-radius:999px;background:var(--teal-soft);color:var(--ink)}
+.desc{margin:0;white-space:pre-line}
+.actions{display:flex;flex-direction:column;gap:8px}
+.btn{font:700 15px var(--f-display);letter-spacing:.03em;text-transform:uppercase;border:0;border-radius:999px;padding:14px 20px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-primary{background:var(--tag);color:var(--tag-ink)}
+.btn-dark{background:var(--ink);color:var(--bg)}
+.btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.close{position:sticky;top:0;justify-self:end;grid-column:1/-1;margin:10px 10px -46px 0;z-index:2;width:38px;height:38px;border-radius:50%;border:0;background:rgb(0 0 0 / .55);color:#fff;font-size:20px;cursor:pointer}
+.sku{font:500 12px var(--f-mono);color:var(--muted)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+footer{max-width:1100px;margin:0 auto;padding:0 16px calc(32px + env(safe-area-inset-bottom,0px));color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;font-weight:600;font-size:14px;max-width:90%}
+</style>
+<script src="config.js"></script>
+<script src="sb.js"></script>
+</head>
+<body>
+<header class="hero">
+  <div class="in">
+    <h1 id="storeName">JT Deals&amp;Finds</h1>
+    <p id="tagline"></p>
+    <div class="count" id="count"></div>
+  </div>
+</header>
+
+<main>
+  <div class="bar">
+    <div class="tools">
+      <input class="search" id="q" type="search" placeholder="Search items" aria-label="Search items">
+      <select class="search" id="sort" aria-label="Sort">
+        <option value="new">Newest</option>
+        <option value="low">Price: low to high</option>
+        <option value="high">Price: high to low</option>
+      </select>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  <span id="footContact"></span>
+  <span>Prices and descriptions may be updated.</span>
+</footer>
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+
+<script>
+const ORDER = ["Furniture","Home & Kitchen","Tools & Hardware","Electronics","Clothing & Shoes","Jewelry & Watches","Collectibles & Antiques","Toys & Games","Books & Media","Sports & Outdoors","Auto Parts","Art & Decor","Musical Instruments","Other"];
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => (n==null||n===""||isNaN(n)) ? "" : "$" + Number(n).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
+const safeUrl = u => /^https:\/\//i.test(u||"") ? u : "";
+
+let all = [], settings = {}, cat = "";
+
+function toast(m){ const h=$("#toastHost"); h.innerHTML=`<div class="toast" role="status">${esc(m)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>h.innerHTML="",2600); }
+
+function skeleton(){
+  $("#grid").innerHTML = Array.from({length:8},()=>`<div class="card skel" aria-hidden="true"><div class="ph"></div><div class="body"><div class="ti">&nbsp;</div></div></div>`).join("");
+}
+
+function applySettings(){
+  const name = settings.store_name || "JT Deals&Finds";
+  $("#storeName").textContent = name;
+  document.title = name;
+  $("#tagline").textContent = settings.tagline || "";
+  $("#tagline").hidden = !settings.tagline;
+  const em = settings.contact_email;
+  $("#footContact").innerHTML = em ? `Questions? <a href="mailto:${esc(em)}">${esc(em)}</a>` : "";
+}
+
+function shown(){
+  const showSold = settings.show_sold === "true";
+  return all.filter(i => !i.hidden && (showSold || i.status !== "Sold"));
+}
+
+function visible(){
+  const q = $("#q").value.trim().toLowerCase();
+  let v = shown().filter(i => (!cat || i.category === cat) &&
+    (!q || [i.title, i.brand, i.category, i.subcategory, i.description, i.sku].join(" ").toLowerCase().includes(q)));
+  const s = $("#sort").value;
+  const avail = i => i.status === "Sold" ? 1 : 0;
+  v.sort((a,b) => avail(a)-avail(b) ||
+    (s==="low" ? (a.price||0)-(b.price||0) : s==="high" ? (b.price||0)-(a.price||0) : new Date(b.created_at)-new Date(a.created_at)));
+  return v;
+}
+
+function renderChips(){
+  const counts = {}; shown().forEach(i => counts[i.category] = (counts[i.category]||0)+1);
+  const used = ORDER.filter(n => counts[n]).concat(Object.keys(counts).filter(n => !ORDER.includes(n)));
+  $("#chips").hidden = used.length < 2;
+  $("#chips").innerHTML = `<button class="chip" aria-pressed="${!cat}" data-c="">All<small>${shown().length}</small></button>` +
+    used.map(n => `<button class="chip" aria-pressed="${cat===n}" data-c="${esc(n)}">${esc(n)}<small>${counts[n]}</small></button>`).join("");
+  $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { cat = b.dataset.c; renderChips(); renderGrid(); });
+}
+
+function renderGrid(){
+  const g = $("#grid"); const v = visible();
+  const avail = shown().filter(i => i.status !== "Sold").length;
+  $("#count").textContent = `${avail} item${avail===1?"":"s"} available`;
+  if(!shown().length){ g.innerHTML = `<div class="empty" style="grid-column:1/-1">New items are on the way. Check back soon.</div>`; return; }
+  if(!v.length){ g.innerHTML = `<div class="empty" style="grid-column:1/-1">Nothing matches that search.</div>`; return; }
+  g.innerHTML = "";
+  v.forEach(i => {
+    const b = document.createElement("button");
+    b.className = "card" + (i.status==="Sold" ? " sold" : "");
+    b.setAttribute("aria-label", `${i.title}, ${money(i.price)}${i.status==="Sold"?", sold":""}`);
+    b.innerHTML = `<div class="ph">${i.photo_url?`<img src="${esc(i.photo_url)}" alt="" loading="lazy">`:""}
+      ${i.price?`<span class="pricetag">${money(i.price)}</span>`:""}${i.status==="Sold"?'<span class="soldflag">Sold</span>':""}</div>
+      <div class="body"><div class="ti">${esc(i.title)}</div><div class="meta">${esc(i.condition||"")}${i.brand&&i.brand!=="Unbranded"?" · "+esc(i.brand):""}</div></div>`;
+    b.onclick = () => openItem(i);
+    g.appendChild(b);
+  });
+}
+
+function openItem(i, fromHash){
+  if(!fromHash) history.replaceState(null, "", "#" + encodeURIComponent(i.id));
+  const em = settings.contact_email;
+  const link = location.href.split("#")[0] + "#" + encodeURIComponent(i.id);
+  const subject = `Interested in: ${i.title} (${i.sku})`;
+  const body = `Hi,\n\nI'm interested in this item:\n${i.title}\n${money(i.price)}\n${link}\n\nIs it still available?\n`;
+  const mail = em ? `mailto:${em}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : "";
+  const ebay = safeUrl(i.ebay_url);
+  const sold = i.status === "Sold";
+  $("#sheetHost").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(i.title)}">
+    <button class="close" id="xClose" aria-label="Close">×</button>
+    <div class="pic">${i.photo_url?`<img src="${esc(i.photo_url)}" alt="${esc(i.title)}">`:""}</div>
+    <div class="info">
+      <h2>${esc(i.title)}</h2>
+      <div class="bigprice">${sold ? '<span style="color:var(--sold)">Sold</span>' : esc(money(i.price))}</div>
+      <div class="facts">
+        ${i.condition?`<span class="fact">${esc(i.condition)}</span>`:""}
+        ${i.brand&&i.brand!=="Unbranded"?`<span class="fact">${esc(i.brand)}</span>`:""}
+        ${i.category?`<span class="fact">${esc(i.category)}</span>`:""}
+      </div>
+      ${i.description?`<p class="desc">${esc(i.description)}</p>`:""}
+      <div class="actions">
+        ${!sold && ebay ? `<a class="btn btn-primary" href="${esc(ebay)}" target="_blank" rel="noopener">Buy on eBay</a>` : ""}
+        ${!sold && mail ? `<a class="btn ${ebay?"btn-dark":"btn-primary"}" href="${esc(mail)}">Email about this item</a>` : ""}
+        <button class="btn btn-ghost" id="xShare">Share</button>
+      </div>
+      <span class="sku">Item ${esc(i.sku)}</span>
+    </div>
+  </div></div>`;
+  const close = () => { $("#sheetHost").innerHTML = ""; history.replaceState(null, "", location.pathname + location.search); };
+  $("#xClose").onclick = close;
+  $("#scrim").onclick = e => { if(e.target.id === "scrim") close(); };
+  document.onkeydown = e => { if(e.key === "Escape") close(); };
+  $("#xShare").onclick = async () => {
+    try{ if(navigator.share){ await navigator.share({title:i.title, text:`${i.title} ${money(i.price)}`, url:link}); return; } }catch(e){ if(e.name==="AbortError") return; }
+    try{ await navigator.clipboard.writeText(link); toast("Link copied"); }catch(e){ toast(link); }
+  };
+  $("#xClose").focus();
+}
+
+function openFromHash(){
+  const id = decodeURIComponent(location.hash.slice(1));
+  if(!id) return;
+  const i = all.find(x => x.id === id);
+  if(i) openItem(i, true);
+}
+
+$("#q").oninput = renderGrid;
+$("#sort").onchange = renderGrid;
+window.addEventListener("hashchange", openFromHash);
+
+(async () => {
+  if(!SB.configured){
+    $("#grid").innerHTML = `<div class="notice" style="grid-column:1/-1">This store isn't connected yet. Fill in config.js with your Supabase details.</div>`;
+    return;
+  }
+  skeleton();
+  try{
+    const [s, rows] = await Promise.all([
+      SB.settings(),
+      SB.rest("GET", "items?select=id,sku,title,category,subcategory,brand,condition,description,price,status,hidden,ebay_url,photo_url,created_at&hidden=eq.false&order=created_at.desc", undefined, null, true)
+    ]);
+    settings = s || {}; all = rows || [];
+  }catch(e){
+    $("#grid").innerHTML = `<div class="notice" style="grid-column:1/-1">Couldn't load items right now. Please try again in a minute.</div>`;
+    return;
+  }
+  applySettings(); renderChips(); renderGrid(); openFromHash();
+})();
+</script>
+</body>
+</html>
